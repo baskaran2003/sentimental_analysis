@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Customer Reviews - Satisfaction Predictor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: url('static/image/p1.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #333;
+        }
+        header {
+            background-color: #512da8;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+        }
+        .container {
+            max-width: 960px;
+            margin: 40px auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #512da8;
+            margin-bottom: 20px;
+        }
+        .review-card {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f3e5f5;
+        }
+        .review-card p { margin: 8px 0; }
+        .email {
+            font-weight: bold;
+            color: #3f51b5;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            margin-right: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-predict {
+            background-color: #4caf50;
+            color: white;
+        }
+        .btn-reply {
+            background-color: #ff9800;
+            color: white;
+        }
+        footer {
+            background-color: #4527a0;
+            color: white;
+            text-align: center;
+            padding: 15px 0;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Customer Feedback Dashboard</h1>
+</header>
+
+<div class="container">
+    <h2>Recent Customer Reviews</h2>
+
+    {% for review in reviews %}
+    <div class="review-card">
+        <p class="email">{{ review.email }}</p>
+        <p>"{{ review.review }}"</p>
+        <button class="btn btn-predict" onclick="predictSentiment(`{{ review.review }}`, `{{ review.email }}`, 'res{{ loop.index }}')">Predict</button>
+        <button class="btn btn-reply" onclick="sendReply(`{{ review.email }}`)">Reply</button>
+        <p id="res{{ loop.index }}" style="margin-top: 10px; font-weight: bold;"></p>
+    </div>
+    {% endfor %}
+
+    <a href="/" class="btn btn-reply" style="margin-top: 20px;">← Back to Home</a>
+</div>
+
+<footer>
+    &copy; 2025 Customer Satisfaction Analyzer | Built with care 🧠
+</footer>
+
+<script>
+function predictSentiment(reviewText, email, resultId) {
+    const formData = new FormData();
+    formData.append("review", reviewText);
+    formData.append("email", email);
+
+    fetch("/predict-review", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById(resultId).innerText = "Prediction failed.";
+        } else {
+            document.getElementById(resultId).innerText =
+                `Sentiment: ${data.sentiment} (Confidence: ${data.confidence})`;
+        }
+    })
+    .catch(err => {
+        document.getElementById(resultId).innerText = "Error occurred.";
+        console.error(err);
+    });
+}
+
+function sendReply(email) {
+    const message = prompt("Enter your reply to send via email:");
+    if (!message) return;
+
+    const formData = new FormData();
+    formData.append("email", email);
+    formData.append("message", message);
+
+    fetch("/send-reply", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.success ? "Email sent!" : "Failed: " + data.error);
+    });
+}
+</script>
+
+</body>
+</html>
