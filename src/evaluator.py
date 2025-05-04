@@ -1,5 +1,5 @@
 from sklearn.metrics import accuracy_score
-import mlflow
+import mlflow # type: ignore
 
 def evaluate_model(model, X_test, y_test):
     """Evaluate model and log accuracy to MLflow."""

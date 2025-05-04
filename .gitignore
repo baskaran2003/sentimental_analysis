@@ -3,7 +3,7 @@
 
 # Python virtual environments
 venv/
-.env
+#.env
 
 # MLflow tracking files
 mlruns/
@@ -14,7 +14,7 @@ __pycache__/
 *.pkl
 
 # Environment/Secret files
-*.env
+# *.env
 
 # OS/Editor temp files
 .DS_Store

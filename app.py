@@ -1,16 +1,33 @@
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse # type: ignore
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
+from fastapi.staticfiles import StaticFiles # type: ignore
 import mlflow.sklearn
 import joblib
 import os
 from pymongo import MongoClient
-import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
+import google.generativeai as genai
+
+# Configure Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# Optional test
+try:
+    models = genai.list_models()
+    for m in models:
+        print(f"{m.name}: {m.supported_generation_methods}")
+    print("✅ API key is working. Models available:")
+    print(models)
+   
+
+    
+except Exception as e:
+    print("❌ API call failed:", e)
 
 # Initialize FastAPI
 app = FastAPI()
@@ -24,7 +41,7 @@ templates = Jinja2Templates(directory="templates")
 # Load model and transformers
 tfidf = joblib.load("models/tfidf_vectorizer.pkl")
 label_encoder = joblib.load("models/label_encoder.pkl")
-model_uri = "runs:/68bafaa636684e5c83c3e561422224b2/sentiment_model"
+model_uri = "runs:/b0e618c550ca4208b216af807d7849e2/sentiment_model"
 model = mlflow.sklearn.load_model(model_uri)
 
 # History for display
@@ -93,8 +110,8 @@ async def get_reviews(request: Request):
     })
 
 
-from fastapi import Request, Form
 from fastapi.responses import JSONResponse
+
 @app.post("/predict-review")
 async def predict_review(review: str = Form(...), email: str = Form(...)):
     # Predict
@@ -124,7 +141,10 @@ async def predict_review(review: str = Form(...), email: str = Form(...)):
             "email": email,
             "review": review,
             "sentiment": sentiment_with_conf
-    })
+        })
+        
+        # print(prediction_label)
+        # print(confidence_str)
 
 
     return JSONResponse({
@@ -155,70 +175,54 @@ async def send_reply(email: str = Form(...), message: str = Form(...)):
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)})
     
+from google.generativeai import GenerativeModel, configure
+from pymongo import MongoClient
 
+import os
 
-'''
-@app.post("/predict", response_class=HTMLResponse)
-async def predict_sentiment(request: Request, feedback: str = Form(...)):
-    # Step 1: Transform input
-    review_vector = tfidf.transform([feedback])
-    prediction_encoded = model.predict(review_vector)
-    prediction_label = label_encoder.inverse_transform(prediction_encoded)[0]
-    prediction_proba = model.predict_proba(review_vector)
-    confidence = prediction_proba[0][prediction_encoded[0]] * 100
+# Set Gemini API Key (make sure it's in your environment variables or .env file)
+@app.post("/generate-reply")
+async def generate_and_send_reply(email: str = Form(...)):
+    # Connect to MongoDB
+    mongo_uri = os.getenv("MONGO_URI")
+    client = MongoClient(mongo_uri)
+    db = client["Review-mlops"]
+    collection = db["reviews"]
 
-    review_array = review_vector.toarray()
-    review_df = pd.DataFrame(review_array, columns=tfidf.get_feature_names_out())
+    # Fetch review and sentiment
+    review_data = collection.find_one({"email": email}, {"_id": 0, "review": 1, "sentiment": 1})
+    if not review_data:
+        return {"success": False, "error": "Email not found in database."}
 
-    # Step 2: Define SHAP-friendly prediction wrapper
-    def model_func(x):
-        return model.predict_proba(x)
+    review = review_data["review"]
+    sentiment = review_data["sentiment"]
 
-    # Step 3: Build SHAP explainer
-    explainer = shap.Explainer(model_func, review_df)
+    # Generate content using Gemini
+    prompt = f"""The customer gave the following review: "{review}" which was classified as "{sentiment}".
+Write a professional, polite email reply to the customer that reflects this sentiment and addresses their concern or appreciation accordingly."""
 
-    # Step 4: Get SHAP values
-    shap_values = explainer(review_df)
+    try:
+        model = GenerativeModel("gemini-1.5-pro-latest")
+        response = model.generate_content(prompt)
+        reply = response.text
 
-    # Step 5: Save SHAP bar plot (first instance)
-    plot_filename = f"static/shap_plot_{uuid.uuid4().hex[:8]}.png"
-    plt.figure()
-    shap.plots.bar(shap_values[0], max_display=10, show=False)
-    plt.tight_layout()
-    plt.savefig(plot_filename)
-    plt.close()
-    # Step 5: Get top contributing words
-    word_contributions = sorted(
-        zip(tfidf.get_feature_names_out(), shap_values.values[0]),
-        key=lambda x: abs(x[1]),
-        reverse=True
-    )
-    top_words = [word for word, _ in word_contributions[:3]]
+        # Send email using your existing send_reply logic
+        sender_email = "vmmbaskaran@gmail.com"
+        sender_password = os.getenv("SENDER_PASS")  # App Password for Gmail
 
-    # Step 6: Setup styling
-    color = "success" if prediction_label.lower() == "positive" else "danger" if prediction_label.lower() == "negative" else "warning"
+        msg = EmailMessage()
+        msg.set_content(reply)
+        msg["Subject"] = "Response to Your Feedback"
+        msg["From"] = sender_email
+        msg["To"] = email
 
-    # Step 7: Add to history
-    history.insert(0, {
-        "review": feedback,
-        "result": prediction_label,
-        "confidence": f"{confidence:.2f}%",
-        "color": color,
-        "top_words": top_words
-    })
-    if len(history) > 5:
-        history.pop()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(sender_email, sender_password)
+            smtp.send_message(msg)
 
-    # Step 8: Return response
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "prediction": prediction_label,
-        "confidence": f"{confidence:.2f}%",
-        "color": color,
-        "top_words": top_words,
-        "shap_plot": "/" + plot_filename,
-        "history": history
-    })
-'''
+        return {"success": True, "reply": reply}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
     

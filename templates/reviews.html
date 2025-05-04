@@ -82,8 +82,11 @@
     <div class="review-card">
         <p class="email">{{ review.email }}</p>
         <p>"{{ review.review }}"</p>
-        <button class="btn btn-predict" onclick="predictSentiment(`{{ review.review }}`, `{{ review.email }}`, 'res{{ loop.index }}')">Predict</button>
+
+        <button class="btn btn-predict" onclick="predictSentiment(`{{ review.review }}`, 'res{{ loop.index }}', '{{ review.email }}')">Predict</button>
         <button class="btn btn-reply" onclick="sendReply(`{{ review.email }}`)">Reply</button>
+        <button class="btn btn-reply" onclick="autoReply(`{{ review.email }}`)">Gemini Reply</button>
+
         <p id="res{{ loop.index }}" style="margin-top: 10px; font-weight: bold;"></p>
     </div>
     {% endfor %}
@@ -96,7 +99,7 @@
 </footer>
 
 <script>
-function predictSentiment(reviewText, email, resultId) {
+function predictSentiment(reviewText, resultId, email) {
     const formData = new FormData();
     formData.append("review", reviewText);
     formData.append("email", email);
@@ -120,6 +123,7 @@ function predictSentiment(reviewText, email, resultId) {
     });
 }
 
+
 function sendReply(email) {
     const message = prompt("Enter your reply to send via email:");
     if (!message) return;
@@ -135,6 +139,24 @@ function sendReply(email) {
     .then(res => res.json())
     .then(data => {
         alert(data.success ? "Email sent!" : "Failed: " + data.error);
+    });
+}
+
+function autoReply(email) {
+    fetch("/generate-reply", {
+        method: "POST",
+        body: new URLSearchParams({ email })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Gemini reply sent successfully.\n\nResponse:\n${data.reply}`);
+        } else {
+            alert("Error: " + data.error);
+        }
+    })
+    .catch(err => {
+        alert("Unexpected error occurred: " + err);
     });
 }
 </script>
