@@ -1,10 +1,12 @@
 import os
 import mlflow
 
+
 from src.data_loader import load_data
 from src.preprocessor import preprocess_data
 from src.trainer import train_model
 from src.evaluator import evaluate_model
+
 
 def run_pipeline(data_path="data/Reviews.csv", model_dir="models/"):
     

@@ -1,9 +1,9 @@
-
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
 import joblib
 import os
+
 
 def preprocess_data(df, save_path="models/"):
     """Preprocess text data and encode labels."""

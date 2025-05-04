@@ -1,8 +1,8 @@
-
 from sklearn.ensemble import RandomForestClassifier
 import mlflow 
 import mlflow.sklearn
 import os
+
 
 def train_model(X_train, y_train):
     """Train Random Forest model and log with MLflow."""
