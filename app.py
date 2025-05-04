@@ -199,7 +199,8 @@ async def generate_and_send_reply(email: str = Form(...)):
 
     # Generate content using Gemini
     prompt = f"""The customer gave the following review: "{review}" which was classified as "{sentiment}".
-Write a professional, polite email reply to the customer that reflects this sentiment and addresses their concern or appreciation accordingly."""
+Write a professional, polite email reply to the customer that reflects
+this sentiment and addresses their concern or appreciation accordingly."""
 
     try:
         model = GenerativeModel("gemini-1.5-pro-latest")
