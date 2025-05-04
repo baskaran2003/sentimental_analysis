@@ -1,5 +1,5 @@
 from sklearn.metrics import accuracy_score
-import mlflow 
+import mlflow
 
 
 def evaluate_model(model, X_test, y_test):
@@ -8,4 +8,3 @@ def evaluate_model(model, X_test, y_test):
     acc = accuracy_score(y_test, y_pred)
     print(f"Test Accuracy: {acc:.4f}")
     mlflow.log_metric("accuracy", acc)
-    
