@@ -4,6 +4,7 @@
 
 # Python virtual environments
 venv/
+
 .env
 
 # MLflow tracking files
